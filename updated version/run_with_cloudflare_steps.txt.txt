@@ -1,0 +1,34 @@
+ Install dependencies:
+   pip install -r requirements.txt
+
+2. Set your YouTube API key:
+   Windows CMD:
+   set YOUTUBE_API_KEY=YOUR_KEY
+
+   PowerShell:
+   $env:YOUTUBE_API_KEY="YOUR_KEY"
+
+3. Start the app:
+   python neurotunes_socketio_app.py
+
+4. In a second terminal, start Cloudflare Tunnel:
+   cloudflared tunnel --url http://localhost:5000
+
+5. Copy the https://...trycloudflare.com URL.
+
+6. Stop the app, then restart it with PUBLIC_BASE_URL set to that public URL.
+   Windows CMD:
+   set PUBLIC_BASE_URL=https://your-url.trycloudflare.com
+   python neurotunes_socketio_app.py
+
+   PowerShell:
+   $env:PUBLIC_BASE_URL="https://your-url.trycloudflare.com"
+   python neurotunes_socketio_app.py
+
+7. Create a Jam and share the generated join link.
+
+Notes:
+- Host controls playback by default.
+- Guests can add songs.
+- Enable guest control later by emitting toggle_guest_control from the UI or backend.
+- Rooms are still in-memory; restarting the app clears them.

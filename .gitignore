@@ -1,0 +1,15 @@
+# Virtual Environment
+.venv/
+__pycache__/
+*.pyc
+
+# Local databases & environment files
+ml-service/neurotunes.db
+ml-service/.env
+.env
+
+# Large archives and binaries
+*.zip
+*.tar.gz
+ml-service/ngrok-v3-stable-windows-amd64/
+ml-service/ngrok-v3-stable-windows-amd64.zip

@@ -1,0 +1,4 @@
+Local access: http://127.0.0.1:5000
+Network access: http://10.20.9.115:5000
+ * Serving Flask app 'app'
+ * Debug mode: off

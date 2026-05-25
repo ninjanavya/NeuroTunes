@@ -1,0 +1,7 @@
+flask
+requests
+pandas
+scikit-learn
+numpy
+qrcode[pil]
+python-dotenv

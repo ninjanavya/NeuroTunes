@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - NeuroTunes</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
+  
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #121212;
+      --surface: #121212;
+      --card: #181818;
+      --text: #ffffff;
+      --muted: #b3b3b3;
+      --green: #1ed760;
+      --green-hover: #1fdf64;
+      --error: #f15e6c;
+      --font-sans: 'Inter', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-sans);
+      color: var(--text);
+      background: linear-gradient(to bottom, #2a2a2a 0%, var(--bg) 100%);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px;
+    }
+
+    .brand {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 40px; margin-top: 20px;
+    }
+    .brand-icon {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      color: #000;
+    }
+    .brand h1 { font-family: 'Orbitron', sans-serif; font-size: 28px; letter-spacing: -1px; }
+
+    .auth-container {
+      background: var(--bg);
+      width: 100%;
+      max-width: 734px; /* Spotify desktop login width is wide but content is centered */
+      border-radius: 8px;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+    }
+    
+    .auth-box {
+      width: 100%;
+      max-width: 450px;
+      padding: 40px 0;
+    }
+
+    h2 { font-size: 32px; font-weight: 700; text-align: center; margin-bottom: 40px; letter-spacing: -1px; }
+
+    .input-group { margin-bottom: 20px; display: flex; flex-direction: column; }
+    .input-group label { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+    .input-group input {
+      background: var(--bg);
+      border: 1px solid #727272;
+      color: var(--text);
+      padding: 14px;
+      border-radius: 4px;
+      font-size: 16px;
+      outline: none;
+      transition: border-color 0.1s;
+    }
+    .input-group input:hover { border-color: #ffffff; }
+    .input-group input:focus { border: 2px solid white; padding: 13px; }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 500px;
+      border: none;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s, filter 0.1s;
+      margin-top: 20px;
+      letter-spacing: 0.5px;
+    }
+    .btn:hover { transform: scale(1.04); }
+    .btn:active { transform: scale(1); filter: brightness(0.8); }
+
+    .btn-green { background: var(--green); color: #000; }
+    .btn-green:hover { background: var(--green-hover); }
+    
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid #727272; }
+    .btn-outline:hover { border-color: white; }
+
+    .divider {
+      display: flex; align-items: center; text-align: center; color: var(--muted); margin: 30px 0; font-size: 12px;
+    }
+    .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid #292929; }
+    .divider::before { margin-right: 15px; }
+    .divider::after { margin-left: 15px; }
+
+    .switch-mode { text-align: center; margin-top: 30px; font-size: 14px; color: var(--muted); }
+    .switch-mode a { color: white; text-decoration: none; font-weight: 700; cursor: pointer; transition: color 0.2s; }
+    .switch-mode a:hover { color: var(--green); text-decoration: underline; }
+
+    .error-msg {
+      background: var(--error); color: white; padding: 12px; border-radius: 4px; font-size: 14px; font-weight: 600;
+      margin-bottom: 20px; display: none; text-align: center;
+    }
+    
+    .view { display: none; animation: fadeIn 0.3s ease; }
+    .view.active { display: block; }
+    
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+
+  <div class="brand">
+    <div class="brand-icon">🎧</div>
+    <h1>NeuroTunes</h1>
+  </div>
+
+  <div class="auth-container">
+    <div class="auth-box">
+      
+      <div id="errorBox" class="error-msg"></div>
+
+      <!-- LOGIN VIEW -->
+      <div id="loginView" class="view active">
+        <h2>Log in to NeuroTunes</h2>
+        
+        <div class="input-group">
+          <label for="l_username">Email or username</label>
+          <input type="text" id="l_username" placeholder="Email or username">
+        </div>
+        
+        <div class="input-group">
+          <label for="l_password">Password</label>
+          <input type="password" id="l_password" placeholder="Password">
+        </div>
+        
+        <button class="btn btn-green" onclick="attemptLogin()">Log In</button>
+        <div style="text-align: center; margin-top:20px;">
+          <a href="#" style="color:white; font-size:14px; font-weight:600; text-decoration:none;">Forgot your password?</a>
+        </div>
+        
+        <div class="divider">Don't have an account?</div>
+        
+        <button class="btn btn-outline" onclick="switchView('signup')">Sign up for NeuroTunes</button>
+      </div>
+
+      <!-- SIGNUP VIEW -->
+      <div id="signupView" class="view">
+        <h2>Sign up to start listening</h2>
+        
+        <div class="input-group">
+          <label for="s_username">What should we call you?</label>
+          <input type="text" id="s_username" placeholder="Enter a profile name.">
+        </div>
+        
+        <div class="input-group">
+          <label for="s_password">Create a password</label>
+          <input type="password" id="s_password" placeholder="Create a password.">
+        </div>
+        
+        <button class="btn btn-green" onclick="attemptSignup()">Sign Up</button>
+        
+        <div class="switch-mode">
+          Already have an account? <a onclick="switchView('login')">Log in here.</a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    function switchView(view) {
+      document.getElementById('loginView').classList.remove('active');
+      document.getElementById('signupView').classList.remove('active');
+      document.getElementById(view + 'View').classList.add('active');
+      document.getElementById('errorBox').style.display = 'none';
+    }
+
+    function showError(msg) {
+      const eb = document.getElementById('errorBox');
+      eb.textContent = msg;
+      eb.style.display = 'block';
+    }
+
+    async function attemptLogin() {
+      const u = document.getElementById('l_username').value;
+      const p = document.getElementById('l_password').value;
+      if (!u || !p) return showError("Please enter username and password.");
+      
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: u, password: p})
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = '/';
+      } else {
+        showError(data.error || "Incorrect username or password.");
+      }
+    }
+
+    async function attemptSignup() {
+      const u = document.getElementById('s_username').value;
+      const p = document.getElementById('s_password').value;
+      if (!u || !p) return showError("Please fill out all fields.");
+      
+      const res = await fetch('/api/signup', {
+        method: 'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({username: u, password: p})
+      });
+      const data = await res.json();
+      if (data.success) {
+        window.location.href = '/';
+      } else {
+        showError(data.error || "Signup failed.");
+      }
+    }
+    
+    // Allow hitting Enter to submit
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        if (document.getElementById('loginView').classList.contains('active')) attemptLogin();
+        else attemptSignup();
+      }
+    });
+  </script>
+</body>
+</html>
