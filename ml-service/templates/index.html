@@ -781,15 +781,53 @@ function showSection(id) {
 // ── YouTube Logic ──
 function onYouTubeIframeAPIReady() {}
 
+let isCreatingPlayer = false;
+
 function ensureYTPlayer(videoId) {
   document.getElementById('ytPlayerSection').style.display = 'block';
-  if (ytPlayer && ytPlayerReady) { ytPlayer.loadVideoById(videoId); return; }
   
-  ytPlayer = new YT.Player('ytPlayerContainer', {
+  if (typeof YT === 'undefined' || !YT.Player) {
+    console.log("YouTube Player API not ready yet. Retrying in 500ms...");
+    setTimeout(() => ensureYTPlayer(videoId), 500);
+    return;
+  }
+  
+  if (ytPlayer && ytPlayerReady) {
+    try {
+      ytPlayer.loadVideoById(videoId);
+    } catch(e) {
+      console.error("Error loading video, re-creating player:", e);
+      recreatePlayer(videoId);
+    }
+    return;
+  }
+  
+  if (isCreatingPlayer) {
+    setTimeout(() => ensureYTPlayer(videoId), 500);
+    return;
+  }
+  
+  recreatePlayer(videoId);
+}
+
+function recreatePlayer(videoId) {
+  isCreatingPlayer = true;
+  ytPlayerReady = false;
+  
+  document.getElementById('ytPlayerContainer').innerHTML = "";
+  
+  const placeholder = document.createElement('div');
+  placeholder.id = 'ytPlayerPlaceholder';
+  document.getElementById('ytPlayerContainer').appendChild(placeholder);
+  
+  ytPlayer = new YT.Player('ytPlayerPlaceholder', {
     height: '100%', width: '100%', videoId: videoId,
-    playerVars: { autoplay: 1 },
+    playerVars: { autoplay: 1, playsinline: 1 },
     events: {
-      onReady: () => { ytPlayerReady = true; },
+      onReady: () => { 
+        ytPlayerReady = true; 
+        isCreatingPlayer = false;
+      },
       onStateChange: (e) => {
         if (e.data === YT.PlayerState.ENDED) nextInQueue();
         
@@ -797,7 +835,6 @@ function ensureYTPlayer(videoId) {
         if (e.data === YT.PlayerState.PLAYING) setPlayState(true);
         if (e.data === YT.PlayerState.PAUSED) setPlayState(false);
         
-        // Notify server of play/pause if this client is the Host
         if (currentJamCode && currentJamData && currentJamData.host === currentUsername) {
           if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.PAUSED) {
             updateServerPlayback({
