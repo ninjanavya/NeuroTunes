@@ -645,9 +645,13 @@ async function searchYouTube() {
 }
 
 function addToQueue(item, playNow) {
-  queue.push(item);
-  if (playNow) { currentIndex = queue.length - 1; playCurrent(); }
-  renderQueue();
+  if (currentJamCode) {
+    addSongToJam(item);
+  } else {
+    queue.push(item);
+    if (playNow) { currentIndex = queue.length - 1; playCurrent(); }
+    renderQueue();
+  }
 }
 
 function playCurrent() {
@@ -775,25 +779,133 @@ async function getMoodRecs(mood) {
 
 async function createJam() {
   const username = document.getElementById('jamNameInput').value || 'Guest';
-  const res = await fetch('/jam/create', {method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username})});
-  const data = await res.json();
-  document.getElementById('jamCodeInput').value = data.roomCode;
-  document.getElementById('joinLinkBox').style.display = 'block';
-  document.getElementById('qrImage').src = data.qrCode;
-  setStatus('jamStatus', 'Jam Created!', 'success');
-  refreshJam(data);
+  setStatus('jamStatus', 'Creating...', 'info');
+  try {
+    const res = await fetch('/jam-create', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username})
+    });
+    const data = await res.json();
+    document.getElementById('jamCodeInput').value = data.roomCode;
+    document.getElementById('joinLinkBox').style.display = 'block';
+    document.getElementById('qrImage').src = data.qrCode;
+    setStatus('jamStatus', 'Jam Created!', 'success');
+    currentJamCode = data.roomCode;
+    refreshJam(data);
+    startJamPolling();
+  } catch(e) {
+    setStatus('jamStatus', 'Error creating jam', 'error');
+  }
+}
+
+async function joinJam() {
+  const username = document.getElementById('jamNameInput').value || 'Guest';
+  const roomCode = document.getElementById('jamCodeInput').value.trim().toUpperCase();
+  if (!roomCode) return setStatus('jamStatus', 'Please enter a room code', 'error');
+  
+  setStatus('jamStatus', 'Joining...', 'info');
+  try {
+    const res = await fetch('/jam-join', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ username, roomCode })
+    });
+    const data = await res.json();
+    if (data.error) {
+      setStatus('jamStatus', data.error, 'error');
+    } else {
+      setStatus('jamStatus', 'Joined Jam!', 'success');
+      currentJamCode = data.roomCode;
+      refreshJam(data);
+      startJamPolling();
+    }
+  } catch(e) {
+    setStatus('jamStatus', 'Error joining jam', 'error');
+  }
+}
+
+let jamInterval = null;
+function startJamPolling() {
+  if (jamInterval) clearInterval(jamInterval);
+  jamInterval = setInterval(pollJam, 3000);
+}
+
+async function pollJam() {
+  if (!currentJamCode) return;
+  try {
+    const res = await fetch('/jam/' + currentJamCode);
+    if (res.status === 200) {
+      const data = await res.json();
+      refreshJam(data);
+    } else {
+      clearInterval(jamInterval);
+      currentJamCode = null;
+      setStatus('jamStatus', 'Room closed or expired', 'error');
+    }
+  } catch(e) {}
+}
+
+async function addSongToJam(item) {
+  const username = document.getElementById('jamNameInput').value || 'Guest';
+  try {
+    const res = await fetch('/jam-add-song', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        roomCode: currentJamCode,
+        username: username,
+        song: {
+          videoId: item.videoId,
+          title: item.title
+        }
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      alert(data.error);
+    } else {
+      refreshJam(data);
+    }
+  } catch(e) {
+    console.error("Error adding song to jam:", e);
+  }
+}
+
+function playJamSong(videoId, title) {
+  if (ytPlayer && ytPlayerReady) ytPlayer.pauseVideo();
+  playbackSource = 'youtube';
+  isVisualizerActive = false;
+  ensureYTPlayer(videoId);
+  updateNowPlaying(title, 'Jam Session');
+  setPlayState(true);
 }
 
 function refreshJam(data) {
   document.getElementById('jamInfoText').textContent = 'Room: ' + data.roomCode;
   document.getElementById('memberList').innerHTML = data.room.members.map(m => `<div class="list-item">${m}</div>`).join('');
-  document.getElementById('jamQueueList').innerHTML = data.room.queue.map(q => `<div class="list-item">${q.title}</div>`).join('');
+  document.getElementById('jamQueueList').innerHTML = data.room.queue.map((q, i) => `
+    <div class="list-item">
+      <div>${q.title} <span style="font-size:11px; color:var(--muted)"> (added by ${q.addedBy})</span></div>
+      <button class="btn btn-xs btn-green" onclick="playJamSong('${q.videoId}', '${q.title.replace(/'/g, "\\'")}')">Play</button>
+    </div>
+  `).join('');
 }
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
   getMoodRecs('happy');
   VanillaTilt.init(document.querySelectorAll(".hero"));
+  
+  // Check for room code in URL on load
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomParam = urlParams.get('room');
+  if (roomParam) {
+    showSection('jam');
+    document.getElementById('jamCodeInput').value = roomParam.trim().toUpperCase();
+    // Join the room after a brief delay to ensure UI is ready
+    setTimeout(joinJam, 500);
+  }
 });
 </script>
 </body>
