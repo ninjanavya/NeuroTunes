@@ -302,7 +302,34 @@
     }
     .play-btn:hover { transform: scale(1.15); box-shadow: 0 0 30px rgba(30,215,96,0.7); }
 
-    .yt-player-wrap { border-radius: 16px; overflow: hidden; aspect-ratio: 16/9; max-height: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+    /* ── Floating YouTube Player Panel ── */
+    #ytPlayerSection {
+      position: fixed;
+      bottom: 110px;
+      right: 20px;
+      width: 320px;
+      background: rgba(10, 11, 18, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.8), 0 0 20px var(--accent-glow);
+      z-index: 90;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      animation: slideInUp 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+    @keyframes slideInUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    
+    .yt-player-wrap {
+      border-radius: 10px;
+      overflow: hidden;
+      aspect-ratio: 16/9;
+      width: 100%;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+    }
     .yt-player-wrap iframe { width: 100%; height: 100%; border: none; }
 
     .grid-2col { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; }
@@ -430,6 +457,15 @@
       .now-sub {
         font-size: 11px;
       }
+      #ytPlayerSection {
+        position: relative !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+        margin-top: 20px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        animation: none !important;
+      }
     }
   </style>
 </head>
@@ -521,10 +557,6 @@
       <h3 style="margin-bottom:15px;">My Queue</h3>
       <div id="queueList"></div>
       
-      <div id="ytPlayerSection" style="margin-top:30px; display:none;">
-        <h3 style="margin-bottom:15px;">🎬 Now Playing (YouTube)</h3>
-        <div class="yt-player-wrap" id="ytPlayerContainer"></div>
-      </div>
     </div>
 
     <!-- LIBRARY (3D COVER FLOW) -->
@@ -560,6 +592,7 @@
             <button class="btn btn-secondary" onclick="joinJam()">Join</button>
           </div>
           <div id="jamStatus" class="status info">No Jam joined yet.</div>
+          <button id="syncAudioBtn" class="btn btn-green btn-xs" style="display:none; width:100%; margin-bottom:15px;" onclick="syncAudioManual()">🔊 Sync & Join Live Audio</button>
           <div id="joinLinkBox" style="display:none; text-align:center; margin-top:20px;">
             <p style="font-size:13px; color:var(--muted);">Scan to join:</p>
             <img id="qrImage" src="" style="width:150px; border-radius:16px; margin-top:10px;">
@@ -584,6 +617,14 @@
         <h2>🕘 Listening History</h2>
       </div>
       <div class="card-grid" id="historyGrid"></div>
+    </div>
+    <!-- Floating Player Panel (PIP) -->
+    <div id="ytPlayerSection" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <h4 style="font-size:13px; font-weight:700; color:white; margin:0;">🎬 Live Video</h4>
+        <button onclick="document.getElementById('ytPlayerSection').style.display='none'" style="background:transparent; border:none; color:var(--muted); font-size:16px; cursor:pointer; font-weight:bold;">×</button>
+      </div>
+      <div class="yt-player-wrap" id="ytPlayerContainer"></div>
     </div>
 
   </div>
@@ -1014,6 +1055,7 @@ async function pollJam() {
       
       const isHost = (data.room.host === currentUsername);
       if (isHost) {
+        document.getElementById('syncAudioBtn').style.display = 'none';
         // Host periodically syncs offset
         if (playbackSource === 'youtube' && ytPlayerReady && ytPlayer.getPlayerState) {
           const state = ytPlayer.getPlayerState();
@@ -1032,14 +1074,23 @@ async function pollJam() {
         
         if (s_activeSong) {
           const localVideoId = (ytPlayer && ytPlayerReady && ytPlayer.getVideoData) ? ytPlayer.getVideoData().video_id : null;
-          if (s_activeSong.videoId !== localVideoId) {
+          const localState = (ytPlayer && ytPlayerReady) ? ytPlayer.getPlayerState() : null;
+          
+          if (localVideoId !== s_activeSong.videoId) {
             playJamSong(s_activeSong.videoId, s_activeSong.title, false);
           }
           
           if (ytPlayer && ytPlayerReady) {
-            const localState = ytPlayer.getPlayerState();
             if (s_isPlaying && localState !== YT.PlayerState.PLAYING) {
               ytPlayer.playVideo();
+              // Show sync button if autoplay gets blocked
+              setTimeout(() => {
+                if (ytPlayer.getPlayerState() !== YT.PlayerState.PLAYING) {
+                  document.getElementById('syncAudioBtn').style.display = 'block';
+                } else {
+                  document.getElementById('syncAudioBtn').style.display = 'none';
+                }
+              }, 1000);
             } else if (!s_isPlaying && localState === YT.PlayerState.PLAYING) {
               ytPlayer.pauseVideo();
             }
@@ -1048,7 +1099,12 @@ async function pollJam() {
             if (s_isPlaying && Math.abs(localTime - s_offset) > 3.5) {
               ytPlayer.seekTo(s_offset, true);
             }
+          } else {
+            // Player not ready, display sync button
+            document.getElementById('syncAudioBtn').style.display = 'block';
           }
+        } else {
+          document.getElementById('syncAudioBtn').style.display = 'none';
         }
       }
     } else {
@@ -1057,6 +1113,18 @@ async function pollJam() {
       setStatus('jamStatus', 'Room closed or expired', 'error');
     }
   } catch(e) {}
+}
+
+function syncAudioManual() {
+  if (currentJamData && currentJamData.activeSong) {
+    const song = currentJamData.activeSong;
+    playJamSong(song.videoId, song.title, false);
+    if (ytPlayer && ytPlayerReady) {
+      ytPlayer.playVideo();
+      ytPlayer.seekTo(currentJamData.currentOffset || 0, true);
+    }
+  }
+  document.getElementById('syncAudioBtn').style.display = 'none';
 }
 
 async function addSongToJam(item) {
