@@ -313,6 +313,124 @@
     }
 
     .empty { color: var(--muted); font-style: italic; padding: 20px; text-align: center; }
+
+    /* ── Mobile UI Layouts ── */
+    .mobile-header {
+      display: none;
+      background: rgba(10, 11, 18, 0.8);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 20px;
+      align-items: center;
+      gap: 15px;
+      z-index: 50;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    .menu-toggle-btn {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: white;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+    .menu-toggle-btn:hover {
+      background: rgba(255,255,255,0.15);
+      transform: scale(1.05);
+    }
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      z-index: 99;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .sidebar-overlay.open {
+      display: block;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-header { display: flex; }
+      
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60px 1fr 90px;
+        grid-template-areas: "header" "main" "player";
+      }
+
+      .sidebar {
+        position: fixed;
+        top: 0;
+        left: -280px;
+        width: 260px;
+        height: 100vh;
+        z-index: 100;
+        transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+        box-shadow: 20px 0 40px rgba(0,0,0,0.7);
+      }
+      .sidebar.open {
+        transform: translateX(280px);
+      }
+
+      .main-content {
+        padding: 15px;
+      }
+      
+      .grid-2col {
+        grid-template-columns: 1fr !important;
+        gap: 20px;
+      }
+      
+      .hero {
+        padding: 20px;
+      }
+      .hero h2 {
+        font-size: 24px;
+      }
+      .hero p {
+        font-size: 13px;
+      }
+      
+      .swiper-slide {
+        width: 250px !important;
+        height: 320px !important;
+      }
+
+      .player-bar {
+        grid-template-columns: 1fr auto;
+        padding: 0 15px;
+        gap: 10px;
+      }
+      .player-bar > div:last-child {
+        display: none;
+      }
+      
+      .now-art {
+        width: 44px;
+        height: 44px;
+        font-size: 18px;
+      }
+      
+      .now-title {
+        font-size: 13px;
+      }
+      .now-sub {
+        font-size: 11px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -324,6 +442,18 @@
 <canvas id="visualizer"></canvas>
 
 <div class="app">
+  <!-- Mobile Header -->
+  <header class="mobile-header">
+    <button class="menu-toggle-btn" onclick="toggleSidebar()">☰</button>
+    <div class="brand" style="margin-bottom: 0; gap: 8px;">
+      <div class="brand-icon" style="width: 32px; height: 32px; font-size: 16px; border-radius: 8px;">🎵</div>
+      <h1 style="font-size: 18px;">NeuroTunes</h1>
+    </div>
+  </header>
+
+  <!-- Sidebar Overlay for mobile -->
+  <div class="sidebar-overlay" onclick="toggleSidebar()" id="sidebarOverlay"></div>
+
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="brand">
@@ -484,6 +614,13 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
+const currentUsername = "{{ username }}";
+
+function toggleSidebar() {
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('sidebarOverlay').classList.toggle('open');
+}
+
 // ==========================================
 // 1. 3D Background (Vanta Halo)
 // ==========================================
@@ -591,6 +728,13 @@ function showSection(id) {
   
   if (id === 'library') loadLocalSongs();
   if (id === 'history') loadHistory();
+
+  // Close sidebar on mobile
+  if (window.innerWidth <= 768) {
+    document.querySelector('.sidebar').classList.remove('open');
+    const overlay = document.getElementById('sidebarOverlay');
+    if (overlay) overlay.classList.remove('open');
+  }
 }
 
 // ── YouTube Logic ──
@@ -607,8 +751,20 @@ function ensureYTPlayer(videoId) {
       onReady: () => { ytPlayerReady = true; },
       onStateChange: (e) => {
         if (e.data === YT.PlayerState.ENDED) nextInQueue();
+        
+        let isPlaying = (e.data === YT.PlayerState.PLAYING);
         if (e.data === YT.PlayerState.PLAYING) setPlayState(true);
         if (e.data === YT.PlayerState.PAUSED) setPlayState(false);
+        
+        // Notify server of play/pause if this client is the Host
+        if (currentJamCode && currentJamData && currentJamData.host === currentUsername) {
+          if (e.data === YT.PlayerState.PLAYING || e.data === YT.PlayerState.PAUSED) {
+            updateServerPlayback({
+              isPlaying: isPlaying,
+              currentOffset: ytPlayer.getCurrentTime()
+            });
+          }
+        }
       }
     }
   });
@@ -831,13 +987,70 @@ function startJamPolling() {
   jamInterval = setInterval(pollJam, 3000);
 }
 
+async function updateServerPlayback(fields) {
+  if (!currentJamCode) return;
+  try {
+    await fetch('/jam-update-playback', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        roomCode: currentJamCode,
+        ...fields
+      })
+    });
+  } catch(e) {
+    console.error("Error updating server playback:", e);
+  }
+}
+
 async function pollJam() {
   if (!currentJamCode) return;
   try {
     const res = await fetch('/jam/' + currentJamCode);
     if (res.status === 200) {
       const data = await res.json();
+      currentJamData = data.room;
       refreshJam(data);
+      
+      const isHost = (data.room.host === currentUsername);
+      if (isHost) {
+        // Host periodically syncs offset
+        if (playbackSource === 'youtube' && ytPlayerReady && ytPlayer.getPlayerState) {
+          const state = ytPlayer.getPlayerState();
+          if (state === YT.PlayerState.PLAYING) {
+            updateServerPlayback({
+              currentOffset: ytPlayer.getCurrentTime(),
+              isPlaying: true
+            });
+          }
+        }
+      } else {
+        // Guests match host's state
+        const s_activeSong = data.room.activeSong;
+        const s_isPlaying = data.room.isPlaying;
+        const s_offset = data.room.currentOffset || 0;
+        
+        if (s_activeSong) {
+          const localVideoId = (ytPlayer && ytPlayerReady && ytPlayer.getVideoData) ? ytPlayer.getVideoData().video_id : null;
+          if (s_activeSong.videoId !== localVideoId) {
+            playJamSong(s_activeSong.videoId, s_activeSong.title, false);
+          }
+          
+          if (ytPlayer && ytPlayerReady) {
+            const localState = ytPlayer.getPlayerState();
+            if (s_isPlaying && localState !== YT.PlayerState.PLAYING) {
+              ytPlayer.playVideo();
+            } else if (!s_isPlaying && localState === YT.PlayerState.PLAYING) {
+              ytPlayer.pauseVideo();
+            }
+            
+            const localTime = ytPlayer.getCurrentTime();
+            if (s_isPlaying && Math.abs(localTime - s_offset) > 3.5) {
+              ytPlayer.seekTo(s_offset, true);
+            }
+          }
+        }
+      }
     } else {
       clearInterval(jamInterval);
       currentJamCode = null;
@@ -872,13 +1085,21 @@ async function addSongToJam(item) {
   }
 }
 
-function playJamSong(videoId, title) {
+function playJamSong(videoId, title, isLocalTrigger = true) {
   if (ytPlayer && ytPlayerReady) ytPlayer.pauseVideo();
   playbackSource = 'youtube';
   isVisualizerActive = false;
   ensureYTPlayer(videoId);
   updateNowPlaying(title, 'Jam Session');
   setPlayState(true);
+  
+  if (isLocalTrigger && currentJamCode) {
+    updateServerPlayback({
+      activeSong: { videoId, title },
+      isPlaying: true,
+      currentOffset: 0
+    });
+  }
 }
 
 function refreshJam(data) {
@@ -887,7 +1108,7 @@ function refreshJam(data) {
   document.getElementById('jamQueueList').innerHTML = data.room.queue.map((q, i) => `
     <div class="list-item">
       <div>${q.title} <span style="font-size:11px; color:var(--muted)"> (added by ${q.addedBy})</span></div>
-      <button class="btn btn-xs btn-green" onclick="playJamSong('${q.videoId}', '${q.title.replace(/'/g, "\\'")}')">Play</button>
+      <button class="btn btn-xs btn-green" onclick="playJamSong('${q.videoId}', '${q.title.replace(/'/g, "\\'")}', true)">Play</button>
     </div>
   `).join('');
 }

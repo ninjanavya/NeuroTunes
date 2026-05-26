@@ -495,6 +495,9 @@ def create_jam():
         "host": username,
         "members": [username],
         "queue": [],
+        "activeSong": None,
+        "isPlaying": False,
+        "currentOffset": 0,
         "created_at": datetime.now(),
     }
     return jsonify(build_room_response(room_code))
@@ -552,6 +555,27 @@ def get_jam(room_code):
     room_code = room_code.strip().upper()
     if room_code not in jam_rooms:
         return jsonify({"error": "Jam room not found"}), 404
+    return jsonify(build_room_response(room_code))
+
+
+@app.route("/jam-update-playback", methods=["POST"])
+def update_jam_playback():
+    data = request.get_json(silent=True) or {}
+    room_code = (data.get("roomCode") or "").strip().upper()
+    
+    if not room_code or room_code not in jam_rooms:
+        return jsonify({"error": "Jam room not found"}), 404
+        
+    if "activeSong" in data:
+        jam_rooms[room_code]["activeSong"] = data["activeSong"]
+    if "isPlaying" in data:
+        jam_rooms[room_code]["isPlaying"] = data["isPlaying"]
+    if "currentOffset" in data:
+        try:
+            jam_rooms[room_code]["currentOffset"] = float(data["currentOffset"])
+        except ValueError:
+            pass
+            
     return jsonify(build_room_response(room_code))
 
 
