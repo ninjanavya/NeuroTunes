@@ -5,3 +5,4 @@ scikit-learn
 numpy
 qrcode[pil]
 python-dotenv
+google-generativeai
