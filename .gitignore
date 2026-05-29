@@ -7,6 +7,10 @@ __pycache__/
 ml-service/neurotunes.db
 ml-service/.env
 .env
+.env.local
+frontend/.env.local
+frontend/.env
+*.env*
 
 # Large archives and binaries
 *.zip

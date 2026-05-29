@@ -1,10 +1,21 @@
-song,artist,mood,genre,energy,duration
-happy_beats.mp3,Nova,happy,pop,0.88,212
-sunrise_drive.mp3,Aether,happy,dance,0.91,198
-smile_loop.mp3,Velvet Pulse,happy,indie,0.76,205
-blue_rain.mp3,Luna Grey,sad,acoustic,0.26,224
-midnight_letters.mp3,Echo Vale,sad,lofi,0.31,231
-lost_in_time.mp3,Noir Bloom,sad,ambient,0.22,242
-ocean_breeze.mp3,Skyform,chill,lofi,0.48,218
-evening_clouds.mp3,Drift Theory,chill,ambient,0.41,256
-cafe_dreams.mp3,Soft Static,chill,jazz,0.52,201
+song,mood,genre,energy,valence,plays
+Blinding Lights - The Weeknd,happy,pop,0.95,0.88,10
+Levitating - Dua Lipa,happy,pop,0.88,0.82,8
+Happy Now - Zedd,happy,dance,0.82,0.75,5
+Good Life - OneRepublic,happy,pop,0.78,0.8,12
+Sunflower - Post Malone,chill,indie,0.55,0.6,15
+Night Drive - Lofi Beats,chill,lofi,0.35,0.45,22
+Ocean Eyes - Billie Eilish,chill,alternative,0.42,0.35,19
+Afterglow - Wilkinson,chill,electronic,0.6,0.52,7
+Someone Like You - Adele,sad,ballad,0.22,0.15,25
+Fix You - Coldplay,sad,rock,0.3,0.2,30
+Let Her Go - Passenger,sad,acoustic,0.25,0.18,14
+Memories - Maroon 5,sad,pop,0.4,0.32,11
+Believer - Imagine Dragons,energetic,rock,0.93,0.7,18
+Stronger - Kanye West,energetic,rap,0.9,0.78,27
+Legends Never Die - League of Legends,energetic,anthem,0.91,0.65,9
+Hall of Fame - The Script,energetic,pop,0.84,0.72,16
+Weightless - Marconi Union,focus,ambient,0.12,0.3,40
+Intro - The xx,focus,indie,0.48,0.5,32
+Resonance - HOME,focus,synthwave,0.65,0.55,21
+Strobe - deadmau5,focus,electronic,0.7,0.48,13

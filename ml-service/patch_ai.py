@@ -28,7 +28,7 @@ def generate_playlist():
         return jsonify({"error": "No prompt provided."}), 400
     
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(
             f"You are an expert AI DJ. Based on this prompt: '{prompt}', generate a list of 5 exact song titles and their artists that perfectly match this vibe. "
             f"Return ONLY a valid JSON array of strings in this exact format: ['Song Title - Artist', 'Song Title - Artist']. Do not include any markdown, code blocks, or extra text."

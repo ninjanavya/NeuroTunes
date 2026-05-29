@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 
 from flask import render_template, Flask, request, jsonify, render_template_string, send_from_directory, session, redirect, url_for
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from werkzeug.security import generate_password_hash, check_password_hash
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
@@ -32,6 +33,7 @@ from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 load_dotenv()
 
 app = Flask(__name__)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 @app.after_request
 def add_header(response):
@@ -365,7 +367,7 @@ def generate_playlist():
         return jsonify({"error": "No prompt provided."}), 400
     
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         response = model.generate_content(
             f"You are an expert AI DJ. Based on this prompt: '{prompt}', generate a list of 5 exact song titles and their artists that perfectly match this vibe. "
             f"Return ONLY a valid JSON array of strings in this exact format: ['Song Title - Artist', 'Song Title - Artist']. Do not include any markdown, code blocks, or extra text."
@@ -580,6 +582,147 @@ def update_jam_playback():
 
 
 # ---------------------------------------------------------------------------
+# Socket.IO Event Handlers
+# ---------------------------------------------------------------------------
+
+@socketio.on('join')
+def handle_join(data):
+    room_code = (data.get('roomCode') or '').strip().upper()
+    username = (data.get('username') or 'Guest').strip()
+    
+    if not room_code or room_code not in jam_rooms:
+        emit('error', {'message': 'Room not found'})
+        return
+        
+    join_room(room_code)
+    
+    if username not in jam_rooms[room_code]["members"]:
+        jam_rooms[room_code]["members"].append(username)
+        
+    # Broadcast member update to the room
+    emit('member_update', {'members': jam_rooms[room_code]["members"]}, to=room_code)
+    # Send current room state to the newly joined member
+    emit('room_state', build_room_response(room_code))
+
+@socketio.on('playback_control')
+def handle_playback_control(data):
+    room_code = (data.get('roomCode') or '').strip().upper()
+    if not room_code or room_code not in jam_rooms:
+        return
+        
+    action = data.get('action') # 'play', 'pause', 'seek'
+    
+    if action == 'play':
+        active_song = data.get('activeSong')
+        if active_song:
+            jam_rooms[room_code]["activeSong"] = active_song
+        jam_rooms[room_code]["isPlaying"] = True
+        if 'currentOffset' in data:
+            try:
+                jam_rooms[room_code]["currentOffset"] = float(data['currentOffset'])
+            except (ValueError, TypeError):
+                pass
+    elif action == 'pause':
+        jam_rooms[room_code]["isPlaying"] = False
+    elif action == 'seek':
+        if 'currentOffset' in data:
+            try:
+                jam_rooms[room_code]["currentOffset"] = float(data['currentOffset'])
+            except (ValueError, TypeError):
+                pass
+                
+    # Broadcast playback change to all other members in the room
+    emit('playback_change', data, to=room_code, include_self=False)
+
+@socketio.on('add_song')
+def handle_add_song(data):
+    room_code = (data.get('roomCode') or '').strip().upper()
+    username = (data.get('username') or 'Guest').strip()
+    song = data.get('song') or {}
+    
+    if not room_code or room_code not in jam_rooms or not song:
+        return
+        
+    video_id = song.get("videoId")
+    title = song.get("title", "Untitled")
+    source = song.get("source", "youtube")
+    
+    if not video_id:
+        return
+        
+    existing = [s for s in jam_rooms[room_code]["queue"] if s["videoId"] == video_id]
+    if existing:
+        emit('error', {'message': 'Song already in Jam queue'})
+        return
+        
+    jam_rooms[room_code]["queue"].append({
+        "videoId": video_id,
+        "title": title,
+        "addedBy": username,
+        "source": source
+    })
+    
+    # Broadcast updated room state to everyone
+    emit('room_state', build_room_response(room_code), to=room_code)
+
+@socketio.on('next_song')
+def handle_next_song(data):
+    room_code = (data.get('roomCode') or '').strip().upper()
+    if not room_code or room_code not in jam_rooms:
+        return
+        
+    queue = jam_rooms[room_code]["queue"]
+    if queue:
+        next_song = queue.pop(0)
+        jam_rooms[room_code]["activeSong"] = next_song
+        jam_rooms[room_code]["isPlaying"] = True
+        jam_rooms[room_code]["currentOffset"] = 0
+        
+        # Broadcast playback change and update queue
+        emit('playback_change', {
+            'action': 'play',
+            'activeSong': next_song,
+            'currentOffset': 0
+        }, to=room_code)
+    else:
+        # No more songs in queue
+        jam_rooms[room_code]["activeSong"] = None
+        jam_rooms[room_code]["isPlaying"] = False
+        jam_rooms[room_code]["currentOffset"] = 0
+        emit('playback_change', {'action': 'pause'}, to=room_code)
+        
+    emit('room_state', build_room_response(room_code), to=room_code)
+
+@socketio.on('sync_playback')
+def handle_sync_playback(data):
+    room_code = (data.get('roomCode') or '').strip().upper()
+    if not room_code or room_code not in jam_rooms:
+        return
+        
+    if 'currentOffset' in data:
+        try:
+            jam_rooms[room_code]["currentOffset"] = float(data['currentOffset'])
+        except (ValueError, TypeError):
+            pass
+    if 'isPlaying' in data:
+        jam_rooms[room_code]["isPlaying"] = bool(data['isPlaying'])
+        
+    # Broadcast sync to other users
+    emit('sync', data, to=room_code, include_self=False)
+
+@socketio.on('leave')
+def handle_leave(data):
+    room_code = (data.get('roomCode') or '').strip().upper()
+    username = (data.get('username') or 'Guest').strip()
+    
+    if room_code in jam_rooms:
+        leave_room(room_code)
+        if username in jam_rooms[room_code]["members"]:
+            jam_rooms[room_code]["members"].remove(username)
+        emit('member_update', {'members': jam_rooms[room_code]["members"]}, to=room_code)
+
+
+# ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
 if __name__ == "__main__":
@@ -593,4 +736,4 @@ if __name__ == "__main__":
         print(f"Public:  {PUBLIC_BASE_URL}")
     print(f"Put MP3 files in: {SONGS_DIR}")
 
-    app.run(host="0.0.0.0", port=PORT, debug=False, use_reloader=False)
+    socketio.run(app, host="0.0.0.0", port=PORT, debug=False, use_reloader=False, allow_unsafe_werkzeug=True)
