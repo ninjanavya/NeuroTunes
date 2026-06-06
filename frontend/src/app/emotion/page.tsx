@@ -106,6 +106,11 @@ export default function EmotionPage() {
   // Turn Camera On/Off
   useEffect(() => {
     if (useCam) {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCamLogs('Camera access is not supported on this browser/device.');
+        setUseCam(false);
+        return;
+      }
       navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } })
         .then((stream) => {
           camStreamRef.current = stream;

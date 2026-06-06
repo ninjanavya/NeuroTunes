@@ -53,7 +53,7 @@ export default function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col justify-center items-center px-4 md:px-12 py-24 relative overflow-hidden bg-radial-gradient">
+    <div className="min-h-screen w-full flex flex-col justify-start md:justify-center items-center px-4 md:px-12 py-12 md:py-24 relative overflow-y-auto bg-radial-gradient">
       {/* Cinematic Glowing Background Elements */}
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] animate-pulse-slow"></div>
       <div className="absolute bottom-1/4 right-1/4 w-[450px] h-[450px] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse-slow [animation-delay:2s]"></div>
@@ -130,7 +130,7 @@ export default function LandingPage() {
 
       {/* Auth Modal Overlay */}
       {showAuthModal && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-lg flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-lg flex items-start md:items-center justify-center p-4 pt-12 md:pt-4 z-50 animate-fade-in overflow-y-auto">
           <div className="w-full max-w-md glass-panel border border-white/10 rounded-2xl p-8 relative shadow-2xl">
             {/* Close Button */}
             <button

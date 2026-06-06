@@ -79,6 +79,9 @@ export default function CalibratePage() {
 
   const initializeCamera = async () => {
     try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera access API is not supported on this browser/device.');
+      }
       const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300 } });
       streamRef.current = stream;
       if (videoRef.current) {
