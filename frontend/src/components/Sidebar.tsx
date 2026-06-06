@@ -13,7 +13,8 @@ import {
   BarChart3, 
   Users, 
   Settings, 
-  LogOut
+  LogOut,
+  BrainCircuit
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
