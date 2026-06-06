@@ -6,19 +6,13 @@ import requests
 from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from dotenv import load_dotenv
-import sys
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '../.env'))
-
-# Import RAG Service
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-import rag_service
 
 app = FastAPI(title="NeuroTunes ML Microservice", version="1.0.0")
 
@@ -422,57 +416,6 @@ async def register_feedback(req: FeedbackRequest):
     if not success:
         raise HTTPException(status_code=404, detail="Song not found in dataset")
     return {"status": "success", "message": f"Updated weights for: {req.song}"}
-
-# ===========================================================================
-# RAG Video Comparison Chatbot Endpoints
-# ===========================================================================
-class ProcessVideosRequest(BaseModel):
-    url_a: str
-    url_b: str
-
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-class ChatRequest(BaseModel):
-    query: str
-    chat_history: List[ChatMessage]
-    metadata_a: dict
-    metadata_b: dict
-
-@app.post("/api/process-videos")
-async def api_process_videos(req: ProcessVideosRequest):
-    try:
-        logger = rag_service.logger
-        logger.info(f"Processing Video A: {req.url_a}")
-        video_a = rag_service.process_video(req.url_a, "A")
-        
-        logger.info(f"Processing Video B: {req.url_b}")
-        video_b = rag_service.process_video(req.url_b, "B")
-        
-        return {
-            "status": "success",
-            "video_a": video_a["metadata"],
-            "video_b": video_b["metadata"]
-        }
-    except Exception as e:
-        rag_service.logger.error(f"Error in process-videos endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/chat")
-async def api_chat(req: ChatRequest):
-    try:
-        history = [{"role": msg.role, "content": msg.content} for msg in req.chat_history]
-        generator = rag_service.generate_chat_response(
-            query=req.query,
-            chat_history=history,
-            metadata_a=req.metadata_a,
-            metadata_b=req.metadata_b
-        )
-        return StreamingResponse(generator, media_type="text/event-stream")
-    except Exception as e:
-        rag_service.logger.error(f"Error in chat endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

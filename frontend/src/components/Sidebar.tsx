@@ -13,8 +13,7 @@ import {
   BarChart3, 
   Users, 
   Settings, 
-  LogOut,
-  BrainCircuit
+  LogOut
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
@@ -43,7 +42,6 @@ export const Sidebar: React.FC = () => {
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: Home },
-    { name: 'Video RAG Chat', path: '/rag', icon: BrainCircuit },
     { name: 'Emotion Analyzer', path: '/emotion', icon: Activity },
     { name: 'Discover', path: '/discover', icon: Search },
     { name: 'AI Playlist Studio', path: '/studio', icon: Disc },

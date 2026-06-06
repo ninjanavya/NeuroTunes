@@ -14,8 +14,7 @@ import {
   Play, 
   Sparkles, 
   Compass, 
-  Cpu,
-  ArrowRight
+  Cpu
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -251,20 +250,6 @@ export default function Dashboard() {
         </div>
       </header>
 
-      {/* RAG Banner promotion */}
-      <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-3xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <span className="text-[10px] text-emerald-400 font-extrabold uppercase tracking-wider bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">New Feature</span>
-          <h3 className="text-lg font-bold text-white mt-2">Social Video RAG Strategy Advisor</h3>
-          <p className="text-xs text-slate-400 mt-1">Analyze, compare, and chat with YouTube videos and Instagram Reels transcripts using semantic indexing.</p>
-        </div>
-        <button 
-          onClick={() => router.push('/rag')}
-          className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-bold px-4.5 py-2.5 rounded-xl transition-all shadow-md active:scale-95 flex items-center gap-1.5 shrink-0"
-        >
-          Compare Videos <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
 
       {/* Grid Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
