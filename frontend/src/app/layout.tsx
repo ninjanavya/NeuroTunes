@@ -28,7 +28,7 @@ export default function RootLayout({
 
             {/* Main Application Container */}
             <div className="flex-1 flex flex-col md:pl-64 relative z-10 w-full">
-              <main className="flex-1 w-full pb-36">
+              <main className="flex-1 w-full pt-16 md:pt-0 pb-36">
                 {children}
               </main>
             </div>
